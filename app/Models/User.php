@@ -56,6 +56,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's active cart (latest cart).
+     */
+    public function activeCart()
+    {
+        return $this->hasOne(Cart::class)->latest();
+    }
+
+    /**
      * Get the invoices for the user.
      */
     public function invoices()

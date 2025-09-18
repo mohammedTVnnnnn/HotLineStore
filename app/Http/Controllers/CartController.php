@@ -3,9 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Services\CartService;
+use App\Models\Cart;
+use App\Models\CartItem;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
@@ -296,5 +301,262 @@ class CartController extends Controller
                 'message' => $e->getMessage()
             ], $e->getCode() ?: 500);
         }
+    }
+
+    // ==================== NEW CART SYSTEM METHODS ====================
+
+    /**
+     * عرض محتويات السلة الخاصة بالمستخدم الحالي (authenticated user)
+     */
+    public function showUserCart(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'المستخدم غير مصادق عليه'
+                ], 401);
+            }
+
+            // الحصول على السلة النشطة للمستخدم أو إنشاء واحدة جديدة
+            $cart = Cart::with(['cartItems.product'])
+                ->where('user_id', $user->id)
+                ->latest()
+                ->first();
+
+            if (!$cart) {
+                // إنشاء سلة جديدة للمستخدم
+                $cart = Cart::create(['user_id' => $user->id]);
+                $cart->load(['cartItems.product']);
+            }
+
+            // حساب الإجمالي
+            $total = $this->calculateCartTotal($cart);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'cart' => $cart,
+                    'total' => $total,
+                    'items_count' => $cart->cartItems->sum('quantity')
+                ],
+                'message' => 'تم عرض محتويات السلة بنجاح'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * إضافة منتج إلى السلة مع الكمية
+     * لو المنتج موجود بالفعل في السلة يتم زيادة الكمية بدلاً من تكرار العنصر
+     */
+    public function addToCart(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'product_id' => 'required|integer|exists:products,id',
+                'quantity' => 'required|integer|min:1'
+            ]);
+
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'المستخدم غير مصادق عليه'
+                ], 401);
+            }
+
+            // الحصول على السلة النشطة للمستخدم أو إنشاء واحدة جديدة
+            $cart = Cart::where('user_id', $user->id)->latest()->first();
+            
+            if (!$cart) {
+                $cart = Cart::create(['user_id' => $user->id]);
+            }
+
+            // التحقق من توفر المنتج والمخزون
+            $product = Product::find($validated['product_id']);
+            
+            if (!$product) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'المنتج غير موجود'
+                ], 404);
+            }
+
+            if ($product->stock < $validated['quantity']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الكمية المطلوبة غير متوفرة في المخزون'
+                ], 400);
+            }
+
+            // التحقق من وجود المنتج في السلة
+            $existingItem = CartItem::where('cart_id', $cart->id)
+                ->where('product_id', $validated['product_id'])
+                ->first();
+
+            if ($existingItem) {
+                // زيادة الكمية إذا كان المنتج موجود
+                $newQuantity = $existingItem->quantity + $validated['quantity'];
+                
+                if ($product->stock < $newQuantity) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'الكمية الإجمالية المطلوبة غير متوفرة في المخزون'
+                    ], 400);
+                }
+
+                $existingItem->update(['quantity' => $newQuantity]);
+                $cartItem = $existingItem->fresh();
+            } else {
+                // إضافة منتج جديد للسلة
+                $cartItem = CartItem::create([
+                    'cart_id' => $cart->id,
+                    'product_id' => $validated['product_id'],
+                    'quantity' => $validated['quantity']
+                ]);
+            }
+
+            $cartItem->load('product');
+
+            return response()->json([
+                'success' => true,
+                'data' => $cartItem,
+                'message' => 'تم إضافة المنتج إلى السلة بنجاح'
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل في التحقق من البيانات',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * تعديل الكمية لمنتج محدد داخل السلة
+     */
+    public function updateCartItem(int $id, Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'quantity' => 'required|integer|min:1'
+            ]);
+
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'المستخدم غير مصادق عليه'
+                ], 401);
+            }
+
+            // البحث عن عنصر السلة
+            $cartItem = CartItem::with('product')
+                ->whereHas('cart', function($query) use ($user) {
+                    $query->where('user_id', $user->id);
+                })
+                ->find($id);
+
+            if (!$cartItem) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'عنصر السلة غير موجود'
+                ], 404);
+            }
+
+            // التحقق من توفر المخزون
+            if ($cartItem->product->stock < $validated['quantity']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الكمية المطلوبة غير متوفرة في المخزون'
+                ], 400);
+            }
+
+            $cartItem->update(['quantity' => $validated['quantity']]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $cartItem->fresh(),
+                'message' => 'تم تحديث كمية المنتج بنجاح'
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل في التحقق من البيانات',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * حذف منتج من السلة
+     */
+    public function removeFromCart(int $id): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'المستخدم غير مصادق عليه'
+                ], 401);
+            }
+
+            // البحث عن عنصر السلة
+            $cartItem = CartItem::whereHas('cart', function($query) use ($user) {
+                $query->where('user_id', $user->id);
+            })->find($id);
+
+            if (!$cartItem) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'عنصر السلة غير موجود'
+                ], 404);
+            }
+
+            $cartItem->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم حذف المنتج من السلة بنجاح'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * حساب إجمالي السلة
+     */
+    private function calculateCartTotal(Cart $cart): float
+    {
+        $total = 0;
+        foreach ($cart->cartItems as $item) {
+            $total += $item->quantity * $item->product->price;
+        }
+        return round($total, 2);
     }
 }

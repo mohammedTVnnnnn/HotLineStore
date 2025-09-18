@@ -304,4 +304,110 @@ class InvoiceController extends Controller
             ], 500);
         }
     }
+
+    // ==================== NEW INVOICE SYSTEM METHODS ====================
+
+    /**
+     * تحويل محتويات السلة الحالية للمستخدم إلى فاتورة جديدة
+     */
+    public function checkout(Request $request): JsonResponse
+    {
+        try {
+            $user = auth()->user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'المستخدم غير مصادق عليه'
+                ], 401);
+            }
+
+            $validated = $request->validate([
+                'status' => 'sometimes|string|in:pending,completed,cancelled'
+            ]);
+
+            $status = $validated['status'] ?? 'completed';
+            
+            // استخدام InvoiceService لإنشاء الفاتورة من السلة
+            $invoice = $this->invoiceService->createInvoiceFromUserCart($user->id, $status);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $invoice,
+                'message' => 'تم إنشاء الفاتورة بنجاح من السلة'
+            ], 201);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل في التحقق من البيانات',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], $e->getCode() ?: 500);
+        }
+    }
+
+    /**
+     * عرض قائمة الفواتير الخاصة بالمستخدم الحالي
+     */
+    public function indexUserInvoices(Request $request): JsonResponse
+    {
+        try {
+            $user = auth()->user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'المستخدم غير مصادق عليه'
+                ], 401);
+            }
+
+            $perPage = $request->get('per_page', 15);
+            $invoices = $this->invoiceService->getUserInvoicesPaginated($user->id, $perPage);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $invoices,
+                'message' => 'تم عرض فواتير المستخدم بنجاح'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * عرض تفاصيل فاتورة معينة مع المنتجات المرتبطة بها (للمستخدم الحالي فقط)
+     */
+    public function showUserInvoice(int $id): JsonResponse
+    {
+        try {
+            $user = auth()->user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'المستخدم غير مصادق عليه'
+                ], 401);
+            }
+
+            $invoice = $this->invoiceService->getUserInvoiceById($user->id, $id);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $invoice,
+                'message' => 'تم عرض تفاصيل الفاتورة بنجاح'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], $e->getCode() ?: 500);
+        }
+    }
 }

@@ -35,15 +35,20 @@ Route::prefix('users')->group(function () {
 
 // Product Routes
 Route::prefix('products')->group(function () {
+    // Public routes (available to everyone)
     Route::get('/', [ProductController::class, 'index']);
     Route::get('/search', [ProductController::class, 'search']);
     Route::get('/price-range', [ProductController::class, 'getByPriceRange']);
     Route::get('/low-stock', [ProductController::class, 'getLowStock']);
     Route::get('/{id}', [ProductController::class, 'show']);
-    Route::post('/', [ProductController::class, 'store']);
-    Route::put('/{id}', [ProductController::class, 'update']);
-    Route::put('/{id}/stock', [ProductController::class, 'updateStock']);
-    Route::delete('/{id}', [ProductController::class, 'destroy']);
+    
+    // Admin only routes
+    Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+        Route::post('/', [ProductController::class, 'store']);
+        Route::put('/{id}', [ProductController::class, 'update']);
+        Route::put('/{id}/stock', [ProductController::class, 'updateStock']);
+        Route::delete('/{id}', [ProductController::class, 'destroy']);
+    });
 });
 
 // Cart Routes
@@ -75,4 +80,21 @@ Route::prefix('invoices')->group(function () {
     Route::get('/date-range', [InvoiceController::class, 'getByDateRange']);
     Route::get('/sales-statistics', [InvoiceController::class, 'getSalesStatistics']);
     Route::get('/total-sales', [InvoiceController::class, 'calculateTotalSales']);
+});
+
+// ==================== NEW CART SYSTEM ROUTES ====================
+// Cart System Routes (Protected by auth middleware)
+Route::middleware('auth:sanctum')->prefix('cart')->group(function () {
+    Route::get('/', [CartController::class, 'showUserCart']);           // عرض السلة
+    Route::post('/', [CartController::class, 'addToCart']);            // إضافة منتج للسلة
+    Route::put('/{id}', [CartController::class, 'updateCartItem']);     // تعديل الكمية
+    Route::delete('/{id}', [CartController::class, 'removeFromCart']);   // حذف منتج من السلة
+});
+
+// ==================== NEW INVOICE SYSTEM ROUTES ====================
+// Invoice System Routes (Protected by auth middleware)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/checkout', [InvoiceController::class, 'checkout']);              // إنشاء فاتورة من السلة
+    Route::get('/invoices', [InvoiceController::class, 'indexUserInvoices']);      // عرض فواتير المستخدم
+    Route::get('/invoices/{id}', [InvoiceController::class, 'showUserInvoice']);   // عرض تفاصيل فاتورة
 });
