@@ -28,6 +28,7 @@
 | description | TEXT | وصف المنتج | NULL |
 | price | DECIMAL(10,2) | سعر المنتج | NOT NULL |
 | stock | INTEGER | كمية المخزون | NOT NULL |
+| image | VARCHAR(255) | مسار الصورة المخزنة للمنتج | NULL |
 | created_at | TIMESTAMP | تاريخ الإنشاء | NULL |
 | updated_at | TIMESTAMP | تاريخ آخر تحديث | NULL |
 
@@ -157,7 +158,7 @@ $cart = $user->carts()->create(['user_id' => $user->id]);
 
 **الأعمدة القابلة للتعديل**:
 ```php
-protected $fillable = ['name', 'description', 'price', 'stock'];
+protected $fillable = ['name', 'description', 'price', 'stock', 'image'];
 ```
 
 **أمثلة على الاستخدام**:
@@ -174,8 +175,12 @@ $product = Product::create([
     'name' => 'منتج جديد',
     'description' => 'وصف المنتج',
     'price' => 100.50,
-    'stock' => 10
+    'stock' => 10,
+    'image' => 'products/abc123.jpg' // مسار الصورة المخزنة
 ]);
+
+// الحصول على رابط الصورة
+$imageUrl = $product->image_url; // يعيد: http://localhost:8000/storage/products/abc123.jpg
 ```
 
 ### 3. Cart Model
@@ -390,20 +395,29 @@ $purchaseHistory = $user->invoices()
 
 **المعاملات المطلوبة**:
 ```php
-// POST /api/products
+// POST /api/products (JSON)
 {
     "name": "اسم المنتج",
     "description": "وصف المنتج",
     "price": 100.50,
-    "stock": 50
+    "stock": 50,
+    "image": null // اختياري، للصور استخدم multipart/form-data
 }
+
+// POST /api/products (مع صورة - multipart/form-data)
+// name: "اسم المنتج"
+// description: "وصف المنتج"
+// price: 100.50
+// stock: 50
+// image: [ملف الصورة]
 
 // PUT /api/products/{id}
 {
     "name": "اسم المنتج الجديد", // اختياري
     "description": "وصف جديد", // اختياري
     "price": 120.00, // اختياري
-    "stock": 60 // اختياري
+    "stock": 60, // اختياري
+    "image": null // اختياري، للصور استخدم multipart/form-data
 }
 ```
 
@@ -693,3 +707,50 @@ $userInvoices = $invoiceService->getUserInvoices(1);
 10. جميع العمليات الحساسة (مثل إنشاء الفواتير) تستخدم Database Transactions
 11. تم تطبيق Error Handling شامل مع رسائل خطأ واضحة
 12. جميع الـ responses تتبع نفس التنسيق: success, data, message
+13. دعم رفع الصور للمنتجات مع تخزين المسار في قاعدة البيانات
+14. الصور محفوظة في `storage/app/public/products/` ومتاحة عبر `asset('storage/products/filename')`
+15. عند تحديث صورة منتج، يتم حذف الصورة القديمة تلقائياً
+16. جميع استجابات المنتجات تتضمن `image_url` للوصول السهل للصور
+
+## دعم الصور في المنتجات
+
+### مواصفات الصور المدعومة:
+- **الأنواع**: JPEG, PNG, JPG, GIF, SVG
+- **الحجم الأقصى**: 2 ميجابايت (2048 كيلوبايت)
+- **التخزين**: `storage/app/public/products/`
+- **الوصول**: `asset('storage/products/filename')`
+
+### مثال على الاستجابة مع الصورة:
+```json
+{
+    "success": true,
+    "data": {
+        "id": 1,
+        "name": "منتج جديد",
+        "description": "وصف المنتج",
+        "price": "100.50",
+        "stock": 10,
+        "image": "products/abc123.jpg",
+        "image_url": "http://localhost:8000/storage/products/abc123.jpg",
+        "created_at": "2024-01-15T10:30:00.000000Z",
+        "updated_at": "2024-01-15T10:30:00.000000Z"
+    },
+    "message": "Product created successfully"
+}
+```
+
+### استخدام الصور في Laravel:
+```php
+// الحصول على رابط الصورة
+$product = Product::find(1);
+$imageUrl = $product->image_url; // يعيد الرابط الكامل للصورة
+
+// التحقق من وجود صورة
+if ($product->image) {
+    // المنتج له صورة
+    echo "صورة المنتج: " . $product->image_url;
+} else {
+    // المنتج بدون صورة
+    echo "لا توجد صورة للمنتج";
+}
+```

@@ -91,6 +91,7 @@ HotLine/
 | description | TEXT | وصف المنتج | NULL |
 | price | DECIMAL(10,2) | سعر المنتج | NOT NULL |
 | stock | INTEGER | كمية المخزون | NOT NULL |
+| image | VARCHAR(255) | مسار الصورة المخزنة للمنتج | NULL |
 | created_at | TIMESTAMP | تاريخ الإنشاء | NULL |
 | updated_at | TIMESTAMP | تاريخ آخر تحديث | NULL |
 
@@ -170,7 +171,7 @@ protected $fillable = ['name', 'email', 'password', 'role'];
 
 **الأعمدة القابلة للتعديل**:
 ```php
-protected $fillable = ['name', 'description', 'price', 'stock'];
+protected $fillable = ['name', 'description', 'price', 'stock', 'image'];
 ```
 
 ### 3. Cart Model
@@ -331,6 +332,7 @@ curl -X POST http://localhost:8000/api/users \
 
 #### 2. إنشاء منتج جديد (Admin فقط)
 ```bash
+# إنشاء منتج بدون صورة
 curl -X POST http://localhost:8000/api/products \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
@@ -340,6 +342,15 @@ curl -X POST http://localhost:8000/api/products \
     "price": 4000.00,
     "stock": 25
   }'
+
+# إنشاء منتج مع صورة
+curl -X POST http://localhost:8000/api/products \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -F "name=هاتف آيفون 15" \
+  -F "description=هاتف ذكي حديث من آبل" \
+  -F "price=4000.00" \
+  -F "stock=25" \
+  -F "image=@/path/to/iphone.jpg"
 ```
 
 #### 3. إضافة منتج للسلة
@@ -494,6 +505,42 @@ curl -X GET http://localhost:8000/api/products
 - **API_USAGE_GUIDE.md**: دليل استخدام API مع أمثلة عملية
 - **CHECKOUT_FLOW.md**: تدفق عملية Checkout من السلة إلى الفاتورة
 - **SERVICE_PROVIDER_FIX.md**: إصلاح مشكلة ServiceProvider
+
+---
+
+## 🖼️ دعم الصور في المنتجات
+
+### المميزات:
+- **رفع الصور**: دعم رفع صور للمنتجات (للأدمن فقط)
+- **أنواع مدعومة**: JPEG, PNG, JPG, GIF, SVG
+- **حجم أقصى**: 2 ميجابايت (2048 كيلوبايت)
+- **التخزين**: الصور محفوظة في `storage/app/public/products/`
+- **الوصول**: الصور متاحة عبر رابط `asset('storage/products/filename')`
+
+### مثال على الاستجابة مع الصورة:
+```json
+{
+    "success": true,
+    "data": {
+        "id": 1,
+        "name": "هاتف آيفون 15",
+        "description": "هاتف ذكي حديث من آبل",
+        "price": "4000.00",
+        "stock": 25,
+        "image": "products/abc123.jpg",
+        "image_url": "http://localhost:8000/storage/products/abc123.jpg",
+        "created_at": "2024-01-15T10:30:00.000000Z",
+        "updated_at": "2024-01-15T10:30:00.000000Z"
+    },
+    "message": "Product created successfully"
+}
+```
+
+### ملاحظات مهمة:
+- عند رفع صورة جديدة، يتم حذف الصورة القديمة تلقائياً
+- إذا لم يتم رفع صورة، القيمة `image` ستكون `null`
+- رابط الصورة (`image_url`) متاح في جميع استجابات المنتجات
+- يجب استخدام `multipart/form-data` عند رفع الصور
 
 ---
 

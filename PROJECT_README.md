@@ -15,6 +15,7 @@ HotLine هو نظام تجارة إلكترونية شامل يدعم:
 
 ### 🛍️ إدارة المنتجات
 - إضافة وتعديل وحذف المنتجات
+- رفع وإدارة صور المنتجات (للأدمن فقط)
 - إدارة المخزون تلقائياً
 - البحث والفلترة المتقدمة
 - تنبيهات المخزون المنخفض
@@ -155,14 +156,25 @@ curl -X POST http://localhost:8000/api/users \
 
 #### إنشاء منتج جديد
 ```bash
+# إنشاء منتج بدون صورة
 curl -X POST http://localhost:8000/api/products \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
   -d '{
     "name": "لابتوب ديل",
     "description": "لابتوب عالي الأداء",
     "price": 2500.00,
     "stock": 10
   }'
+
+# إنشاء منتج مع صورة
+curl -X POST http://localhost:8000/api/products \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -F "name=لابتوب ديل" \
+  -F "description=لابتوب عالي الأداء" \
+  -F "price=2500.00" \
+  -F "stock=10" \
+  -F "image=@/path/to/image.jpg"
 ```
 
 #### إضافة منتج للعربة
@@ -189,6 +201,34 @@ curl -X POST http://localhost:8000/api/invoices/from-cart \
 
 - **[DATABASE_DOCUMENTATION.md](DATABASE_DOCUMENTATION.md)** - توثيق شامل لقاعدة البيانات والـ Models
 - **[API_USAGE_GUIDE.md](API_USAGE_GUIDE.md)** - دليل استخدام API مع أمثلة عملية
+
+## دعم الصور في المنتجات
+
+### المميزات:
+- **رفع الصور**: دعم رفع صور للمنتجات (للأدمن فقط)
+- **أنواع مدعومة**: JPEG, PNG, JPG, GIF, SVG
+- **حجم أقصى**: 2 ميجابايت
+- **التخزين**: الصور محفوظة في `storage/app/public/products/`
+- **الوصول**: الصور متاحة عبر رابط `asset('storage/products/filename')`
+
+### مثال على الاستجابة:
+```json
+{
+    "success": true,
+    "data": {
+        "id": 1,
+        "name": "لابتوب ديل",
+        "description": "لابتوب عالي الأداء",
+        "price": "2500.00",
+        "stock": 10,
+        "image": "products/abc123.jpg",
+        "image_url": "http://localhost:8000/storage/products/abc123.jpg",
+        "created_at": "2024-01-15T10:30:00.000000Z",
+        "updated_at": "2024-01-15T10:30:00.000000Z"
+    },
+    "message": "Product created successfully"
+}
+```
 
 ## الـ Endpoints الرئيسية
 

@@ -35,6 +35,11 @@ class ProductService
      */
     public function createProduct(array $data): Product
     {
+        // Handle image upload if present
+        if (isset($data['image']) && $data['image']) {
+            $data['image'] = $this->handleImageUpload($data['image']);
+        }
+
         return Product::create($data);
     }
 
@@ -44,6 +49,15 @@ class ProductService
     public function updateProduct(int $id, array $data): Product
     {
         $product = $this->getProductById($id);
+        
+        // Handle image upload if present
+        if (isset($data['image']) && $data['image']) {
+            // Delete old image if exists
+            if ($product->image) {
+                $this->deleteImage($product->image);
+            }
+            $data['image'] = $this->handleImageUpload($data['image']);
+        }
         
         $product->update($data);
         
@@ -96,5 +110,24 @@ class ProductService
     public function getProductsByPriceRange(float $minPrice, float $maxPrice): Collection
     {
         return Product::whereBetween('price', [$minPrice, $maxPrice])->get();
+    }
+
+    /**
+     * Handle image upload
+     */
+    private function handleImageUpload($image): string
+    {
+        return $image->store('products', 'public');
+    }
+
+    /**
+     * Delete image file
+     */
+    private function deleteImage(string $imagePath): void
+    {
+        $fullPath = storage_path('app/public/' . $imagePath);
+        if (file_exists($fullPath)) {
+            unlink($fullPath);
+        }
     }
 }

@@ -48,7 +48,17 @@ class ProductController extends Controller
             
             return response()->json([
                 'success' => true,
-                'data' => $product,
+                'data' => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'description' => $product->description,
+                    'price' => $product->price,
+                    'stock' => $product->stock,
+                    'image' => $product->image,
+                    'image_url' => $product->image_url,
+                    'created_at' => $product->created_at,
+                    'updated_at' => $product->updated_at
+                ],
                 'message' => 'Product retrieved successfully'
             ]);
         } catch (\Exception $e) {
@@ -69,14 +79,25 @@ class ProductController extends Controller
                 'name' => 'required|string|max:255',
                 'description' => 'required|string',
                 'price' => 'required|numeric|min:0',
-                'stock' => 'required|integer|min:0'
+                'stock' => 'required|integer|min:0',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048'
             ]);
 
             $product = $this->productService->createProduct($validated);
             
             return response()->json([
                 'success' => true,
-                'data' => $product,
+                'data' => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'description' => $product->description,
+                    'price' => $product->price,
+                    'stock' => $product->stock,
+                    'image' => $product->image,
+                    'image_url' => $product->image_url,
+                    'created_at' => $product->created_at,
+                    'updated_at' => $product->updated_at
+                ],
                 'message' => 'Product created successfully'
             ], 201);
         } catch (ValidationException $e) {
@@ -103,14 +124,25 @@ class ProductController extends Controller
                 'name' => 'sometimes|string|max:255',
                 'description' => 'nullable|string',
                 'price' => 'sometimes|numeric|min:0',
-                'stock' => 'sometimes|integer|min:0'
+                'stock' => 'sometimes|integer|min:0',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048'
             ]);
 
             $product = $this->productService->updateProduct($id, $validated);
             
             return response()->json([
                 'success' => true,
-                'data' => $product,
+                'data' => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'description' => $product->description,
+                    'price' => $product->price,
+                    'stock' => $product->stock,
+                    'image' => $product->image,
+                    'image_url' => $product->image_url,
+                    'created_at' => $product->created_at,
+                    'updated_at' => $product->updated_at
+                ],
                 'message' => 'Product updated successfully'
             ]);
         } catch (ValidationException $e) {

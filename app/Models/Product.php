@@ -19,6 +19,7 @@ class Product extends Model
         'description',
         'price',
         'stock',
+        'image',
     ];
 
     /**
@@ -47,5 +48,13 @@ class Product extends Model
     public function invoiceItems()
     {
         return $this->hasMany(InvoiceItem::class);
+    }
+
+    /**
+     * Get the image URL for the product.
+     */
+    public function getImageUrlAttribute()
+    {
+        return $this->image ? asset('storage/' . $this->image) : null;
     }
 }

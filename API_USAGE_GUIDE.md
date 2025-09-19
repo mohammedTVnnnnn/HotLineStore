@@ -52,6 +52,7 @@ curl -X GET http://localhost:8000/api/users/1
 
 #### إنشاء منتج جديد (Admin فقط)
 ```bash
+# إنشاء منتج بدون صورة
 curl -X POST http://localhost:8000/api/products \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -61,6 +62,15 @@ curl -X POST http://localhost:8000/api/products \
     "price": 2500.00,
     "stock": 10
   }'
+
+# إنشاء منتج مع صورة
+curl -X POST http://localhost:8000/api/products \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "name=لابتوب ديل" \
+  -F "description=لابتوب عالي الأداء" \
+  -F "price=2500.00" \
+  -F "stock=10" \
+  -F "image=@/path/to/image.jpg"
 ```
 
 **ملاحظة**: يتطلب هذا الـ endpoint مصادقة وتصريح admin.
@@ -92,6 +102,7 @@ curl -X GET "http://localhost:8000/api/products/low-stock?threshold=5"
 
 #### تحديث منتج (Admin فقط)
 ```bash
+# تحديث منتج بدون صورة
 curl -X PUT http://localhost:8000/api/products/1 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -101,6 +112,15 @@ curl -X PUT http://localhost:8000/api/products/1 \
     "price": 2800.00,
     "stock": 15
   }'
+
+# تحديث منتج مع صورة جديدة
+curl -X PUT http://localhost:8000/api/products/1 \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "name=لابتوب ديل محدث" \
+  -F "description=لابتوب عالي الأداء مع مواصفات جديدة" \
+  -F "price=2800.00" \
+  -F "stock=15" \
+  -F "image=@/path/to/new-image.jpg"
 ```
 
 #### تحديث مخزون منتج (Admin فقط)
@@ -120,6 +140,39 @@ curl -X DELETE http://localhost:8000/api/products/1 \
 ```
 
 **ملاحظة**: جميع عمليات التعديل والحذف تتطلب مصادقة وتصريح admin.
+
+### دعم الصور في المنتجات
+
+#### مواصفات الصور المدعومة:
+- **الأنواع**: JPEG, PNG, JPG, GIF, SVG
+- **الحجم الأقصى**: 2 ميجابايت (2048 كيلوبايت)
+- **التخزين**: يتم حفظ الصور في `storage/app/public/products/`
+- **الوصول**: الصور متاحة عبر رابط `asset('storage/products/filename')`
+
+#### أمثلة على الاستجابة مع الصور:
+```json
+{
+    "success": true,
+    "data": {
+        "id": 1,
+        "name": "لابتوب ديل",
+        "description": "لابتوب عالي الأداء",
+        "price": "2500.00",
+        "stock": 10,
+        "image": "products/abc123.jpg",
+        "image_url": "http://localhost:8000/storage/products/abc123.jpg",
+        "created_at": "2024-01-15T10:30:00.000000Z",
+        "updated_at": "2024-01-15T10:30:00.000000Z"
+    },
+    "message": "Product created successfully"
+}
+```
+
+#### ملاحظات مهمة:
+- عند رفع صورة جديدة، يتم حذف الصورة القديمة تلقائياً
+- إذا لم يتم رفع صورة، القيمة `image` ستكون `null`
+- رابط الصورة (`image_url`) متاح في جميع استجابات المنتجات
+- يجب استخدام `multipart/form-data` عند رفع الصور
 
 ### 3. إدارة العربات
 
@@ -209,19 +262,19 @@ curl -X POST http://localhost:8000/api/users \
 
 2. **إنشاء منتجات**
 ```bash
-# منتج 1
+# منتج 1 مع صورة
 curl -X POST http://localhost:8000/api/products \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "هاتف آيفون",
-    "description": "هاتف ذكي حديث",
-    "price": 3000.00,
-    "stock": 5
-  }'
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -F "name=هاتف آيفون" \
+  -F "description=هاتف ذكي حديث" \
+  -F "price=3000.00" \
+  -F "stock=5" \
+  -F "image=@/path/to/iphone.jpg"
 
-# منتج 2
+# منتج 2 بدون صورة
 curl -X POST http://localhost:8000/api/products \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
   -d '{
     "name": "سماعات لاسلكية",
     "description": "سماعات عالية الجودة",
