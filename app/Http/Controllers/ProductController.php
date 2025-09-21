@@ -299,4 +299,157 @@ class ProductController extends Controller
             ], $e->getCode() ?: 500);
         }
     }
+
+    /**
+     * Get products by category
+     */
+    public function getByCategory(Request $request, int $categoryId): JsonResponse
+    {
+        try {
+            $perPage = $request->get('per_page', 15);
+            $products = $this->productService->getProductsByCategory($categoryId, $perPage);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $products,
+                'message' => 'Products retrieved by category successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get products by category slug
+     */
+    public function getByCategorySlug(Request $request, string $slug): JsonResponse
+    {
+        try {
+            $perPage = $request->get('per_page', 15);
+            $products = $this->productService->getProductsByCategorySlug($slug, $perPage);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $products,
+                'message' => 'Products retrieved by category slug successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get products with categories
+     */
+    public function getWithCategories(Request $request): JsonResponse
+    {
+        try {
+            $perPage = $request->get('per_page', 15);
+            $products = $this->productService->getProductsWithCategories($perPage);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $products,
+                'message' => 'Products with categories retrieved successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Search products by category
+     */
+    public function searchByCategory(Request $request, int $categoryId): JsonResponse
+    {
+        try {
+            $query = $request->get('query');
+            $perPage = $request->get('per_page', 15);
+
+            if (empty($query)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Search query is required'
+                ], 400);
+            }
+
+            $products = $this->productService->searchProductsByCategory($query, $categoryId, $perPage);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $products,
+                'message' => 'Products searched by category successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get products by multiple categories
+     */
+    public function getByCategories(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'category_ids' => 'required|array',
+                'category_ids.*' => 'integer|exists:categories,id',
+                'per_page' => 'integer|min:1|max:100'
+            ]);
+
+            $perPage = $validated['per_page'] ?? 15;
+            $products = $this->productService->getProductsByCategories($validated['category_ids'], $perPage);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $products,
+                'message' => 'Products retrieved by categories successfully'
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get products without category
+     */
+    public function getWithoutCategory(Request $request): JsonResponse
+    {
+        try {
+            $perPage = $request->get('per_page', 15);
+            $products = $this->productService->getProductsWithoutCategory($perPage);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $products,
+                'message' => 'Products without category retrieved successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
