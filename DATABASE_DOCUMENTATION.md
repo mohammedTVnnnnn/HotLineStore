@@ -18,12 +18,28 @@
 | created_at | TIMESTAMP | تاريخ الإنشاء | NULL |
 | updated_at | TIMESTAMP | تاريخ آخر تحديث | NULL |
 
-### 2. جدول المنتجات (products)
+### 2. جدول التصنيفات (categories)
+**الغرض**: تخزين تصنيفات المنتجات مع دعم التصنيفات الهرمية
+
+| العمود | نوع البيانات | الوصف | القيود |
+|--------|-------------|--------|--------|
+| id | BIGINT UNSIGNED | المعرف الفريد للتصنيف | PRIMARY KEY, AUTO_INCREMENT |
+| name | VARCHAR(255) | اسم التصنيف | NOT NULL |
+| description | TEXT | وصف التصنيف | NULL |
+| slug | VARCHAR(255) | الرابط الودود للتصنيف | NOT NULL, UNIQUE |
+| parent_id | BIGINT UNSIGNED | معرف التصنيف الأب | FOREIGN KEY → categories.id |
+| is_active | BOOLEAN | حالة التصنيف (نشط/غير نشط) | NOT NULL, DEFAULT TRUE |
+| sort_order | INTEGER | ترتيب التصنيف | NOT NULL, DEFAULT 0 |
+| created_at | TIMESTAMP | تاريخ الإنشاء | NULL |
+| updated_at | TIMESTAMP | تاريخ آخر تحديث | NULL |
+
+### 3. جدول المنتجات (products)
 **الغرض**: تخزين معلومات المنتجات المتاحة للبيع
 
 | العمود | نوع البيانات | الوصف | القيود |
 |--------|-------------|--------|--------|
 | id | BIGINT UNSIGNED | المعرف الفريد للمنتج | PRIMARY KEY, AUTO_INCREMENT |
+| category_id | BIGINT UNSIGNED | معرف التصنيف | FOREIGN KEY → categories.id |
 | name | VARCHAR(255) | اسم المنتج | NOT NULL |
 | description | TEXT | وصف المنتج | NULL |
 | price | DECIMAL(10,2) | سعر المنتج | NOT NULL |
@@ -32,7 +48,7 @@
 | created_at | TIMESTAMP | تاريخ الإنشاء | NULL |
 | updated_at | TIMESTAMP | تاريخ آخر تحديث | NULL |
 
-### 3. جدول العربات (carts)
+### 4. جدول العربات (carts)
 **الغرض**: تخزين عربات التسوق للمستخدمين
 
 | العمود | نوع البيانات | الوصف | القيود |
@@ -42,7 +58,7 @@
 | created_at | TIMESTAMP | تاريخ الإنشاء | NULL |
 | updated_at | TIMESTAMP | تاريخ آخر تحديث | NULL |
 
-### 4. جدول عناصر العربة (cart_items)
+### 5. جدول عناصر العربة (cart_items)
 **الغرض**: تخزين المنتجات الموجودة في عربة التسوق
 
 | العمود | نوع البيانات | الوصف | القيود |
@@ -54,7 +70,7 @@
 | created_at | TIMESTAMP | تاريخ الإنشاء | NULL |
 | updated_at | TIMESTAMP | تاريخ آخر تحديث | NULL |
 
-### 5. جدول الفواتير (invoices)
+### 6. جدول الفواتير (invoices)
 **الغرض**: تخزين فواتير المبيعات
 
 | العمود | نوع البيانات | الوصف | القيود |
@@ -66,7 +82,7 @@
 | created_at | TIMESTAMP | تاريخ الإنشاء | NULL |
 | updated_at | TIMESTAMP | تاريخ آخر تحديث | NULL |
 
-### 6. جدول عناصر الفاتورة (invoice_items)
+### 7. جدول عناصر الفاتورة (invoice_items)
 **الغرض**: تخزين تفاصيل المنتجات في كل فاتورة
 
 | العمود | نوع البيانات | الوصف | القيود |
@@ -83,27 +99,35 @@
 
 ### العلاقات الرئيسية:
 
-1. **users → carts** (One-to-Many)
+1. **categories → categories** (Self-Referencing)
+   - كل تصنيف يمكن أن يكون له تصنيف أب
+   - العلاقة: `categories.id` → `categories.parent_id`
+
+2. **categories → products** (One-to-Many)
+   - كل تصنيف يمكن أن يحتوي على عدة منتجات
+   - العلاقة: `categories.id` → `products.category_id`
+
+3. **users → carts** (One-to-Many)
    - كل مستخدم يمكن أن يملك عدة عربات تسوق
    - العلاقة: `users.id` → `carts.user_id`
 
-2. **carts → cart_items** (One-to-Many)
+4. **carts → cart_items** (One-to-Many)
    - كل عربة تحتوي على عدة عناصر
    - العلاقة: `carts.id` → `cart_items.cart_id`
 
-3. **products → cart_items** (One-to-Many)
+5. **products → cart_items** (One-to-Many)
    - كل منتج يمكن أن يكون في عدة عربات
    - العلاقة: `products.id` → `cart_items.product_id`
 
-4. **users → invoices** (One-to-Many)
+6. **users → invoices** (One-to-Many)
    - كل مستخدم يمكن أن يملك عدة فواتير
    - العلاقة: `users.id` → `invoices.user_id`
 
-5. **invoices → invoice_items** (One-to-Many)
+7. **invoices → invoice_items** (One-to-Many)
    - كل فاتورة تحتوي على عدة عناصر
    - العلاقة: `invoices.id` → `invoice_items.invoice_id`
 
-6. **products → invoice_items** (One-to-Many)
+8. **products → invoice_items** (One-to-Many)
    - كل منتج يمكن أن يكون في عدة فواتير
    - العلاقة: `products.id` → `invoice_items.product_id`
 
@@ -149,16 +173,55 @@ $invoices = $user->invoices;
 $cart = $user->carts()->create(['user_id' => $user->id]);
 ```
 
-### 2. Product Model
+### 2. Category Model
+**الملف**: `app/Models/Category.php`
+
+**العلاقات**:
+- `hasMany(Product::class)` - التصنيف يحتوي على عدة منتجات
+- `belongsTo(Category::class, 'parent_id')` - التصنيف ينتمي لتصنيف أب
+- `hasMany(Category::class, 'parent_id')` - التصنيف له عدة تصنيفات فرعية
+
+**الأعمدة القابلة للتعديل**:
+```php
+protected $fillable = ['name', 'description', 'slug', 'parent_id', 'is_active', 'sort_order'];
+```
+
+**أمثلة على الاستخدام**:
+```php
+// الحصول على جميع منتجات التصنيف
+$category = Category::find(1);
+$products = $category->products;
+
+// الحصول على التصنيف الأب
+$parent = $category->parent;
+
+// الحصول على التصنيفات الفرعية
+$children = $category->children;
+
+// إنشاء تصنيف جديد
+$category = Category::create([
+    'name' => 'إلكترونيات',
+    'description' => 'جميع الأجهزة الإلكترونية',
+    'slug' => 'electronics',
+    'is_active' => true,
+    'sort_order' => 1
+]);
+
+// الحصول على المسار الكامل للتصنيف
+$fullPath = $category->full_path; // "إلكترونيات > هواتف > ذكية"
+```
+
+### 3. Product Model
 **الملف**: `app/Models/Product.php`
 
 **العلاقات**:
+- `belongsTo(Category::class)` - المنتج ينتمي لتصنيف واحد
 - `hasMany(CartItem::class)` - المنتج موجود في عدة عناصر عربة
 - `hasMany(InvoiceItem::class)` - المنتج موجود في عدة عناصر فاتورة
 
 **الأعمدة القابلة للتعديل**:
 ```php
-protected $fillable = ['name', 'description', 'price', 'stock', 'image'];
+protected $fillable = ['name', 'description', 'price', 'stock', 'image', 'category_id'];
 ```
 
 **أمثلة على الاستخدام**:
@@ -183,7 +246,7 @@ $product = Product::create([
 $imageUrl = $product->image_url; // يعيد: http://localhost:8000/storage/products/abc123.jpg
 ```
 
-### 3. Cart Model
+### 4. Cart Model
 **الملف**: `app/Models/Cart.php`
 
 **العلاقات**:
@@ -211,7 +274,7 @@ $cartItem = $cart->cartItems()->create([
 ]);
 ```
 
-### 4. CartItem Model
+### 5. CartItem Model
 **الملف**: `app/Models/CartItem.php`
 
 **العلاقات**:
@@ -236,7 +299,7 @@ $product = $cartItem->product;
 $cartItem->update(['quantity' => 5]);
 ```
 
-### 5. Invoice Model
+### 6. Invoice Model
 **الملف**: `app/Models/Invoice.php`
 
 **العلاقات**:
@@ -265,7 +328,7 @@ $invoice = Invoice::create([
 ]);
 ```
 
-### 6. InvoiceItem Model
+### 7. InvoiceItem Model
 **الملف**: `app/Models/InvoiceItem.php`
 
 **العلاقات**:
@@ -379,7 +442,69 @@ $purchaseHistory = $user->invoices()
 }
 ```
 
-### 2. ProductController
+### 2. CategoryController
+**الملف**: `app/Http/Controllers/CategoryController.php`
+
+**الـ Endpoints**:
+- `GET /api/categories` - عرض جميع التصنيفات مع pagination
+- `GET /api/categories/active` - عرض التصنيفات النشطة فقط
+- `GET /api/categories/root` - عرض التصنيفات الرئيسية (بدون أب)
+- `GET /api/categories/tree` - عرض شجرة التصنيفات الهرمية
+- `GET /api/categories/search` - البحث في التصنيفات
+- `GET /api/categories/statistics` - إحصائيات التصنيفات
+- `GET /api/categories/{id}` - عرض تصنيف محدد
+- `GET /api/categories/slug/{slug}` - عرض تصنيف بالرابط الودود
+- `GET /api/categories/{id}/breadcrumb` - مسار التصنيف
+- `POST /api/categories` - إنشاء تصنيف جديد (Admin فقط)
+- `PUT /api/categories/{id}` - تحديث تصنيف (Admin فقط)
+- `DELETE /api/categories/{id}` - حذف تصنيف (Admin فقط)
+- `PUT /api/categories/{id}/toggle-status` - تغيير حالة التصنيف (Admin فقط)
+
+**المعاملات المطلوبة**:
+```php
+// POST /api/categories
+{
+    "name": "اسم التصنيف",
+    "description": "وصف التصنيف", // اختياري
+    "slug": "category-slug", // اختياري، يتم إنشاؤه تلقائياً
+    "parent_id": 1, // اختياري، معرف التصنيف الأب
+    "is_active": true, // اختياري، الافتراضي true
+    "sort_order": 1 // اختياري، الافتراضي 0
+}
+
+// PUT /api/categories/{id}
+{
+    "name": "اسم التصنيف الجديد", // اختياري
+    "description": "وصف جديد", // اختياري
+    "slug": "new-slug", // اختياري
+    "parent_id": 2, // اختياري
+    "is_active": false, // اختياري
+    "sort_order": 2 // اختياري
+}
+```
+
+**أمثلة على الاستجابة**:
+```json
+{
+    "success": true,
+    "data": {
+        "id": 1,
+        "name": "إلكترونيات",
+        "description": "جميع الأجهزة الإلكترونية",
+        "slug": "electronics",
+        "parent_id": null,
+        "is_active": true,
+        "sort_order": 1,
+        "full_path": "إلكترونيات",
+        "depth": 0,
+        "created_at": "2024-01-01T10:00:00.000000Z",
+        "updated_at": "2024-01-01T10:00:00.000000Z"
+    },
+    "message": "تم جلب التصنيف بنجاح"
+}
+```
+
+### 3. ProductController
 **الملف**: `app/Http/Controllers/ProductController.php`
 
 **الـ Endpoints**:
@@ -391,6 +516,12 @@ $purchaseHistory = $user->invoices()
 - `GET /api/products/search?query=اسم المنتج` - البحث في المنتجات
 - `GET /api/products/price-range?min_price=10&max_price=100` - فلترة حسب السعر
 - `GET /api/products/low-stock?threshold=10` - عرض المنتجات قليلة المخزون
+- `GET /api/products/with-categories` - المنتجات مع التصنيفات
+- `GET /api/products/without-category` - المنتجات بدون تصنيف
+- `GET /api/products/category/{categoryId}` - المنتجات حسب التصنيف
+- `GET /api/products/category-slug/{slug}` - المنتجات حسب رابط التصنيف
+- `GET /api/products/categories` - المنتجات حسب تصنيفات متعددة
+- `GET /api/products/category/{categoryId}/search` - البحث في تصنيف محدد
 - `PUT /api/products/{id}/stock` - تحديث مخزون المنتج
 
 **المعاملات المطلوبة**:
@@ -401,6 +532,7 @@ $purchaseHistory = $user->invoices()
     "description": "وصف المنتج",
     "price": 100.50,
     "stock": 50,
+    "category_id": 1, // اختياري، معرف التصنيف
     "image": null // اختياري، للصور استخدم multipart/form-data
 }
 
@@ -409,6 +541,7 @@ $purchaseHistory = $user->invoices()
 // description: "وصف المنتج"
 // price: 100.50
 // stock: 50
+// category_id: 1
 // image: [ملف الصورة]
 
 // PUT /api/products/{id}
@@ -417,11 +550,12 @@ $purchaseHistory = $user->invoices()
     "description": "وصف جديد", // اختياري
     "price": 120.00, // اختياري
     "stock": 60, // اختياري
+    "category_id": 2, // اختياري، معرف التصنيف
     "image": null // اختياري، للصور استخدم multipart/form-data
 }
 ```
 
-### 3. CartController
+### 4. CartController
 **الملف**: `app/Http/Controllers/CartController.php`
 
 **الـ Endpoints**:
@@ -457,7 +591,7 @@ $purchaseHistory = $user->invoices()
 }
 ```
 
-### 4. InvoiceController
+### 5. InvoiceController
 **الملف**: `app/Http/Controllers/InvoiceController.php`
 
 **الـ Endpoints**:
@@ -535,7 +669,47 @@ $user = $userService->getUserWithRelations(1);
 // يشمل: carts.cartItems.product, invoices.invoiceItems.product
 ```
 
-### 2. ProductService
+### 2. CategoryService
+**الملف**: `app/Services/CategoryService.php`
+
+**الوظائف الرئيسية**:
+- `getAllCategories($perPage)` - عرض جميع التصنيفات مع pagination
+- `getActiveCategories($perPage)` - عرض التصنيفات النشطة فقط
+- `getRootCategories()` - عرض التصنيفات الرئيسية (بدون أب)
+- `getCategoryTree()` - عرض شجرة التصنيفات الهرمية
+- `getCategoryById($id)` - الحصول على تصنيف محدد
+- `getCategoryBySlug($slug)` - الحصول على تصنيف بالرابط الودود
+- `getCategoriesByParent($parentId)` - الحصول على تصنيفات فرعية
+- `createCategory($data)` - إنشاء تصنيف جديد
+- `updateCategory($id, $data)` - تحديث تصنيف
+- `deleteCategory($id)` - حذف تصنيف
+- `getCategoriesWithProductCount()` - التصنيفات مع عدد المنتجات
+- `searchCategories($query, $perPage)` - البحث في التصنيفات
+- `getCategoryStatistics()` - إحصائيات التصنيفات
+- `reorderCategories($categoryOrders)` - إعادة ترتيب التصنيفات
+- `toggleCategoryStatus($id)` - تغيير حالة التصنيف
+- `getCategoryBreadcrumb($id)` - مسار التصنيف
+
+**أمثلة على الاستخدام**:
+```php
+// إنشاء تصنيف جديد
+$categoryService = new CategoryService();
+$category = $categoryService->createCategory([
+    'name' => 'إلكترونيات',
+    'description' => 'جميع الأجهزة الإلكترونية',
+    'slug' => 'electronics',
+    'is_active' => true,
+    'sort_order' => 1
+]);
+
+// الحصول على شجرة التصنيفات
+$tree = $categoryService->getCategoryTree();
+
+// البحث في التصنيفات
+$categories = $categoryService->searchCategories('إلكترونيات', 10);
+```
+
+### 3. ProductService
 **الملف**: `app/Services/ProductService.php`
 
 **الوظائف الرئيسية**:
@@ -548,6 +722,12 @@ $user = $userService->getUserWithRelations(1);
 - `updateStock($id, $quantity)` - تحديث المخزون
 - `searchProducts($query, $perPage)` - البحث في المنتجات
 - `getProductsByPriceRange($minPrice, $maxPrice)` - فلترة حسب السعر
+- `getProductsByCategory($categoryId, $perPage)` - المنتجات حسب التصنيف
+- `getProductsByCategorySlug($slug, $perPage)` - المنتجات حسب رابط التصنيف
+- `getProductsWithCategories($perPage)` - المنتجات مع التصنيفات
+- `searchProductsByCategory($query, $categoryId, $perPage)` - البحث في تصنيف محدد
+- `getProductsByCategories($categoryIds, $perPage)` - المنتجات حسب تصنيفات متعددة
+- `getProductsWithoutCategory($perPage)` - المنتجات بدون تصنيف
 
 **أمثلة على الاستخدام**:
 ```php
@@ -564,7 +744,7 @@ $product = $productService->createProduct([
 $products = $productService->searchProducts('لابتوب', 10);
 ```
 
-### 3. CartService
+### 4. CartService
 **الملف**: `app/Services/CartService.php`
 
 **الوظائف الرئيسية**:
@@ -600,7 +780,7 @@ if (empty($errors)) {
 }
 ```
 
-### 4. InvoiceService
+### 5. InvoiceService
 **الملف**: `app/Services/InvoiceService.php`
 
 **الوظائف الرئيسية**:
@@ -679,6 +859,49 @@ $products = $productService->getProductsByPriceRange(1000, 3000);
 
 // عرض المنتجات قليلة المخزون
 $lowStockProducts = $productService->getLowStockProducts(5);
+
+// البحث في تصنيف محدد
+$products = $productService->searchProductsByCategory('لابتوب', 1);
+
+// المنتجات حسب التصنيف
+$products = $productService->getProductsByCategory(1);
+
+// المنتجات حسب رابط التصنيف
+$products = $productService->getProductsByCategorySlug('electronics');
+
+// المنتجات مع التصنيفات
+$products = $productService->getProductsWithCategories();
+```
+
+### إدارة التصنيفات:
+```php
+// إنشاء تصنيف جديد
+$category = $categoryService->createCategory([
+    'name' => 'إلكترونيات',
+    'description' => 'جميع الأجهزة الإلكترونية',
+    'slug' => 'electronics',
+    'is_active' => true,
+    'sort_order' => 1
+]);
+
+// إنشاء تصنيف فرعي
+$subCategory = $categoryService->createCategory([
+    'name' => 'هواتف ذكية',
+    'description' => 'هواتف ذكية حديثة',
+    'slug' => 'smartphones',
+    'parent_id' => $category->id,
+    'is_active' => true,
+    'sort_order' => 1
+]);
+
+// الحصول على شجرة التصنيفات
+$tree = $categoryService->getCategoryTree();
+
+// البحث في التصنيفات
+$categories = $categoryService->searchCategories('إلكترونيات');
+
+// إحصائيات التصنيفات
+$stats = $categoryService->getCategoryStatistics();
 ```
 
 ### إحصائيات المبيعات:
@@ -711,6 +934,74 @@ $userInvoices = $invoiceService->getUserInvoices(1);
 14. الصور محفوظة في `storage/app/public/products/` ومتاحة عبر `asset('storage/products/filename')`
 15. عند تحديث صورة منتج، يتم حذف الصورة القديمة تلقائياً
 16. جميع استجابات المنتجات تتضمن `image_url` للوصول السهل للصور
+17. دعم التصنيفات الهرمية مع إمكانية إنشاء تصنيفات فرعية
+18. التصنيفات تدعم الروابط الودودة (slugs) للـ SEO
+19. إمكانية ترتيب التصنيفات حسب `sort_order`
+20. إمكانية تفعيل/إلغاء تفعيل التصنيفات
+21. عند حذف تصنيف، المنتجات تنتقل للتصنيف الأب أو تصبح بدون تصنيف
+22. دعم البحث في التصنيفات بالاسم والوصف
+23. إحصائيات شاملة للتصنيفات وعدد المنتجات
+
+## دعم التصنيفات في المنتجات
+
+### المميزات:
+- **تصنيفات هرمية**: دعم التصنيفات الرئيسية والفرعية
+- **روابط ودودة**: دعم slugs للـ SEO
+- **ترتيب مخصص**: إمكانية ترتيب التصنيفات حسب `sort_order`
+- **تفعيل/إلغاء تفعيل**: إمكانية إخفاء التصنيفات غير المرغوبة
+- **البحث المتقدم**: البحث في التصنيفات بالاسم والوصف
+- **الإحصائيات**: إحصائيات شاملة للتصنيفات وعدد المنتجات
+
+### مثال على الاستجابة مع التصنيف:
+```json
+{
+    "success": true,
+    "data": {
+        "id": 1,
+        "name": "هاتف آيفون 15",
+        "description": "هاتف ذكي حديث من آبل",
+        "price": "4000.00",
+        "stock": 25,
+        "category_id": 1,
+        "category": {
+            "id": 1,
+            "name": "هواتف ذكية",
+            "slug": "smartphones",
+            "full_path": "إلكترونيات > هواتف ذكية"
+        },
+        "image": "products/iphone15.jpg",
+        "image_url": "http://localhost:8000/storage/products/iphone15.jpg",
+        "created_at": "2024-01-15T10:30:00.000000Z",
+        "updated_at": "2024-01-15T10:30:00.000000Z"
+    },
+    "message": "Product created successfully"
+}
+```
+
+### استخدام التصنيفات في Laravel:
+```php
+// الحصول على منتج مع تصنيفه
+$product = Product::with('category')->find(1);
+echo $product->category->name; // "هواتف ذكية"
+
+// الحصول على جميع منتجات تصنيف معين
+$category = Category::find(1);
+$products = $category->products;
+
+// إنشاء منتج مع تصنيف
+$product = Product::create([
+    'name' => 'هاتف آيفون 15',
+    'description' => 'هاتف ذكي حديث',
+    'price' => 4000.00,
+    'stock' => 25,
+    'category_id' => 1
+]);
+
+// البحث في منتجات تصنيف محدد
+$products = Product::whereHas('category', function ($query) {
+    $query->where('name', 'like', '%هواتف%');
+})->get();
+```
 
 ## دعم الصور في المنتجات
 

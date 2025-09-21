@@ -6,6 +6,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\CategoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -40,6 +41,12 @@ Route::prefix('products')->group(function () {
     Route::get('/search', [ProductController::class, 'search']);
     Route::get('/price-range', [ProductController::class, 'getByPriceRange']);
     Route::get('/low-stock', [ProductController::class, 'getLowStock']);
+    Route::get('/with-categories', [ProductController::class, 'getWithCategories']);
+    Route::get('/without-category', [ProductController::class, 'getWithoutCategory']);
+    Route::get('/category/{categoryId}', [ProductController::class, 'getByCategory']);
+    Route::get('/category-slug/{slug}', [ProductController::class, 'getByCategorySlug']);
+    Route::get('/categories', [ProductController::class, 'getByCategories']);
+    Route::get('/category/{categoryId}/search', [ProductController::class, 'searchByCategory']);
     Route::get('/{id}', [ProductController::class, 'show']);
     
     // Admin only routes
@@ -48,6 +55,28 @@ Route::prefix('products')->group(function () {
         Route::put('/{id}', [ProductController::class, 'update']);
         Route::put('/{id}/stock', [ProductController::class, 'updateStock']);
         Route::delete('/{id}', [ProductController::class, 'destroy']);
+    });
+});
+
+// Category Routes
+Route::prefix('categories')->group(function () {
+    // Public routes (available to everyone)
+    Route::get('/', [CategoryController::class, 'index']);
+    Route::get('/active', [CategoryController::class, 'active']);
+    Route::get('/root', [CategoryController::class, 'root']);
+    Route::get('/tree', [CategoryController::class, 'tree']);
+    Route::get('/search', [CategoryController::class, 'search']);
+    Route::get('/statistics', [CategoryController::class, 'statistics']);
+    Route::get('/{id}', [CategoryController::class, 'show']);
+    Route::get('/slug/{slug}', [CategoryController::class, 'showBySlug']);
+    Route::get('/{id}/breadcrumb', [CategoryController::class, 'breadcrumb']);
+    
+    // Admin only routes
+    Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+        Route::post('/', [CategoryController::class, 'store']);
+        Route::put('/{id}', [CategoryController::class, 'update']);
+        Route::delete('/{id}', [CategoryController::class, 'destroy']);
+        Route::put('/{id}/toggle-status', [CategoryController::class, 'toggleStatus']);
     });
 });
 

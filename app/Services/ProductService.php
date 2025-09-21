@@ -13,7 +13,7 @@ class ProductService
      */
     public function getAllProducts(int $perPage = 15): LengthAwarePaginator
     {
-        return Product::paginate($perPage);
+        return Product::with('category')->paginate($perPage);
     }
 
     /**
@@ -21,7 +21,7 @@ class ProductService
      */
     public function getProductById(int $id): Product
     {
-        $product = Product::find($id);
+        $product = Product::with('category')->find($id);
         
         if (!$product) {
             throw new \Exception('Product not found', 404);
@@ -99,7 +99,8 @@ class ProductService
      */
     public function searchProducts(string $query, int $perPage = 15): LengthAwarePaginator
     {
-        return Product::where('name', 'like', "%{$query}%")
+        return Product::with('category')
+            ->where('name', 'like', "%{$query}%")
             ->orWhere('description', 'like', "%{$query}%")
             ->paginate($perPage);
     }
@@ -109,7 +110,74 @@ class ProductService
      */
     public function getProductsByPriceRange(float $minPrice, float $maxPrice): Collection
     {
-        return Product::whereBetween('price', [$minPrice, $maxPrice])->get();
+        return Product::with('category')
+            ->whereBetween('price', [$minPrice, $maxPrice])
+            ->get();
+    }
+
+    /**
+     * Get products by category
+     */
+    public function getProductsByCategory(int $categoryId, int $perPage = 15): LengthAwarePaginator
+    {
+        return Product::with('category')
+            ->where('category_id', $categoryId)
+            ->paginate($perPage);
+    }
+
+    /**
+     * Get products by category slug
+     */
+    public function getProductsByCategorySlug(string $slug, int $perPage = 15): LengthAwarePaginator
+    {
+        return Product::with('category')
+            ->whereHas('category', function ($query) use ($slug) {
+                $query->where('slug', $slug);
+            })
+            ->paginate($perPage);
+    }
+
+    /**
+     * Get products with categories
+     */
+    public function getProductsWithCategories(int $perPage = 15): LengthAwarePaginator
+    {
+        return Product::with(['category.parent'])
+            ->paginate($perPage);
+    }
+
+    /**
+     * Search products by category
+     */
+    public function searchProductsByCategory(string $query, int $categoryId, int $perPage = 15): LengthAwarePaginator
+    {
+        return Product::with('category')
+            ->where('category_id', $categoryId)
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                  ->orWhere('description', 'like', "%{$query}%");
+            })
+            ->paginate($perPage);
+    }
+
+    /**
+     * Get products by multiple categories
+     */
+    public function getProductsByCategories(array $categoryIds, int $perPage = 15): LengthAwarePaginator
+    {
+        return Product::with('category')
+            ->whereIn('category_id', $categoryIds)
+            ->paginate($perPage);
+    }
+
+    /**
+     * Get products without category
+     */
+    public function getProductsWithoutCategory(int $perPage = 15): LengthAwarePaginator
+    {
+        return Product::with('category')
+            ->whereNull('category_id')
+            ->paginate($perPage);
     }
 
     /**

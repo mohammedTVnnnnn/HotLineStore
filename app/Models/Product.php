@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
@@ -20,6 +22,7 @@ class Product extends Model
         'price',
         'stock',
         'image',
+        'category_id',
     ];
 
     /**
@@ -35,9 +38,17 @@ class Product extends Model
     }
 
     /**
+     * Get the category that owns the product.
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    /**
      * Get the cart items for the product.
      */
-    public function cartItems()
+    public function cartItems(): HasMany
     {
         return $this->hasMany(CartItem::class);
     }
@@ -45,7 +56,7 @@ class Product extends Model
     /**
      * Get the invoice items for the product.
      */
-    public function invoiceItems()
+    public function invoiceItems(): HasMany
     {
         return $this->hasMany(InvoiceItem::class);
     }
